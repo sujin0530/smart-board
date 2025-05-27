@@ -1,30 +1,13 @@
-# This repository is archived
-
-In general, we don't consider yjs (& current CRDT libraries in general) to be a good fit for tldraw. Instead, we recommend [tldraw sync](https://tldraw.dev/docs/sync).
+# SmartBoard  
+실시간 협업이 가능한 화이트보드 프로젝트입니다.  
+`tldraw` + `yjs` 기반으로 제작되었으며, 사용자 역할, 도형 제어 등 다양한 기능을 추가 중입니다.
 
 ---
 
-This repository shows how you might use [tldraw](https://github.com/tldraw/tldraw) together with the [yjs](https://yjs.dev) library. It also makes a good example for how to use tldraw with other backend services!
-
-## Bootsrapping Locally
-
-To run the local development server, first clone this repo.
-
-Install dependencies:
+## 실행 방법
 
 ```bash
-npm i
-```
-
-Start the local development server:
-
-For macOS/Linux:
-```bash
+git clone https://github.com/sujin0530/smart-board.git
+cd smart-board
+npm install
 npm run dev
-```
-For Windows:
-```bash
-npm run dev:win
-```
-
-Open the example project at `localhost:5173`.
