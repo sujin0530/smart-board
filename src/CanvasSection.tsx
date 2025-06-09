@@ -19,25 +19,44 @@ const CanvasSection = () => {
   const [penWidth, setPenWidth] = useState(5)
   const [eraserWidth, setEraserWidth] = useState(20)
 
-  const [chatMessages, setChatMessages] = useState<{ sender: string; message: string }[]>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const username = useRef(`User_${Math.floor(Math.random() * 1000)}`)
+  const userColor = useRef(`#${Math.floor(Math.random()*16777215).toString(16)}`) // 랜덤 HEX 색상
 
   const [isChatVisible, setIsChatVisible] = useState(true)
   const chatContainerRef = useRef<HTMLDivElement | null>(null)
+
+  type ChatMessage = {
+  sender: string
+  message: string
+  timestamp: string
+  color: string
+}
+
+
+
 
 
 
   const sendMessage = () => {
   if (chatInput.trim() === '' || !socket) return
-  const newMessage = { sender: username.current, message: chatInput }
+
+  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const newMessage: ChatMessage = {
+    sender: username.current,
+    message: chatInput,
+    timestamp,
+    color: userColor.current,
+  }
+
   socket.emit('chat:message', newMessage)
   setChatMessages((prev) => [...prev, newMessage])
   setChatInput('')
 }
   useEffect(() => {
   if (!socket) return
-  const receiveMessage = (data: { sender: string; message: string }) => {
+  const receiveMessage = (data: ChatMessage) => {
     setChatMessages((prev) => [...prev, data])
   }
   socket.on('chat:message', receiveMessage)
@@ -484,10 +503,17 @@ const stopRecording = () => {
       <button onClick={() => setIsChatVisible(false)}>✖</button>
     </div>
     <div className="chat-messages">
-      {chatMessages.map((msg, idx) => (
-        <div key={idx}><strong>{msg.sender}:</strong> {msg.message}</div>
-      ))}
+  {chatMessages.map((msg, idx) => (
+    <div key={idx} className="chat-message-line">
+      <span style={{ color: msg.color, fontWeight: 'bold' }}>{msg.sender}</span>
+      <span style={{ fontSize: '11px', color: '#888', marginLeft: 6 }}>
+        ({msg.timestamp})
+      </span>
+      <div style={{ marginTop: 2 }}>{msg.message}</div>
     </div>
+  ))}
+</div>
+
     <div className="chat-input">
       <input
         type="text"
