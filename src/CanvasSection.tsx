@@ -4,8 +4,10 @@ import { io, Socket } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
 import './CanvasSection.css'
 import jsPDF from 'jspdf'
+import * as pdfjsLib from 'pdfjs-dist'
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?worker'
 
-
+pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker()
 
 const CanvasSection = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -238,6 +240,50 @@ const CanvasSection = () => {
   link.download = 'whiteboard.png'
   link.click()
 }
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  if (!canvas || !event.target.files || event.target.files.length === 0) return
+
+  const file = event.target.files[0]
+  const fileReader = new FileReader()
+
+  fileReader.onload = async () => {
+    try {
+      const typedarray = new Uint8Array(fileReader.result as ArrayBuffer)
+      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
+      const page = await pdf.getPage(1)
+      const scale = 2
+      const viewport = page.getViewport({ scale })
+
+      const tempCanvas = document.createElement('canvas')
+      const context = tempCanvas.getContext('2d')
+      if (!context) return
+
+      tempCanvas.width = viewport.width
+      tempCanvas.height = viewport.height
+
+      await page.render({ canvasContext: context, viewport }).promise
+
+      const img = new Image()
+      img.src = tempCanvas.toDataURL()
+
+      img.onload = () => {
+        const fabricImg = new fabric.Image(img, {
+          left: 0,
+          top: 0,
+          selectable: false,
+        })
+        canvas.add(fabricImg)
+        canvas.sendToBack(fabricImg)
+        canvas.requestRenderAll()
+      }
+    } catch (err) {
+      console.error('PDF 불러오기 오류:', err)
+    }
+  }
+
+  fileReader.readAsArrayBuffer(file)
+}
+
 
   return (
     <div className="canvas-container" ref={containerRef}>
@@ -249,6 +295,10 @@ const CanvasSection = () => {
         <button onClick={() => setActiveTool('hand')} disabled={activeTool === 'hand'}>손</button>
         <button onClick={exportToPDF}>📄 PDF로 저장</button>
         <button onClick={exportToPNG}>🖼 PNG로 저장</button>
+        <label style={{ display: 'inline-block' }}>
+          📂 PDF 불러오기
+          <input type="file" accept="application/pdf" onChange={handlePdfUpload} style={{ display: 'none' }} />
+        </label>
         {activeTool === 'pen' && (
           <>
             <label>색상: </label>
