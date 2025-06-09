@@ -230,6 +230,15 @@ const CanvasSection = () => {
     pdf.save('whiteboard.pdf')
   }
 
+  const exportToPNG = () => {
+  if (!canvas) return
+  const dataURL = canvas.toDataURL({ format: 'png' })
+  const link = document.createElement('a')
+  link.href = dataURL
+  link.download = 'whiteboard.png'
+  link.click()
+}
+
   return (
     <div className="canvas-container" ref={containerRef}>
       <canvas ref={canvasRef} />
@@ -239,6 +248,7 @@ const CanvasSection = () => {
         <button onClick={() => setActiveTool('eraser')} disabled={activeTool === 'eraser'}>지우개</button>
         <button onClick={() => setActiveTool('hand')} disabled={activeTool === 'hand'}>손</button>
         <button onClick={exportToPDF}>📄 PDF로 저장</button>
+        <button onClick={exportToPNG}>🖼 PNG로 저장</button>
         {activeTool === 'pen' && (
           <>
             <label>색상: </label>
