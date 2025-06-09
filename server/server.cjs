@@ -25,6 +25,10 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('object:removed', data)
   })
 
+  socket.on('canvas:pan', (transform) => {
+    socket.broadcast.emit('canvas:pan', transform)
+  })
+
   socket.on('disconnect', () => {
     console.log('❌ Client disconnected:', socket.id)
   })

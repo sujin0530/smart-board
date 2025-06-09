@@ -14,7 +14,6 @@ const CanvasSection = () => {
   const [penWidth, setPenWidth] = useState(5)
   const [eraserWidth, setEraserWidth] = useState(20)
 
-  // 1. 소켓 연결
   useEffect(() => {
     const newSocket = io('http://localhost:3001')
     setSocket(newSocket)
@@ -23,7 +22,6 @@ const CanvasSection = () => {
     }
   }, [])
 
-  // 2. 캔버스 초기화
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return
 
@@ -34,7 +32,6 @@ const CanvasSection = () => {
     })
     setCanvas(newCanvas)
 
-    // zoom
     newCanvas.on('mouse:wheel', (opt) => {
       const delta = opt.e.deltaY
       let zoom = newCanvas.getZoom() * 0.999 ** delta
@@ -44,7 +41,6 @@ const CanvasSection = () => {
       opt.e.stopPropagation()
     })
 
-    // resize
     const handleResize = () => {
       newCanvas.setDimensions({
         width: containerRef.current!.offsetWidth,
@@ -59,7 +55,6 @@ const CanvasSection = () => {
     }
   }, [])
 
-  // 3. 도구 적용
   useEffect(() => {
     if (!canvas) return
 
@@ -87,19 +82,20 @@ const CanvasSection = () => {
       canvas.isDrawingMode = false
       canvas.selection = false
       canvas.defaultCursor = 'move'
-
       let panning = false
+
       canvas.on('mouse:down', () => (panning = true))
       canvas.on('mouse:move', (event) => {
         if (panning) {
           const delta = new fabric.Point(event.e.movementX, event.e.movementY)
           canvas.relativePan(delta)
+          if (socket && canvas.viewportTransform)
+            socket.emit('canvas:pan', canvas.viewportTransform)
         }
       })
       canvas.on('mouse:up', () => (panning = false))
     }
 
-    // Delete 키로 삭제
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.key === 'Delete' || e.key === 'Backspace') && canvas) {
         const activeObjects = canvas.getActiveObjects()
@@ -117,7 +113,6 @@ const CanvasSection = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeTool, canvas, penColor, penWidth, eraserWidth, socket])
 
-  // 4. 객체 추가 시 서버로 전송
   useEffect(() => {
     if (!canvas || !socket) return
 
@@ -136,7 +131,6 @@ const CanvasSection = () => {
     }
   }, [canvas, socket])
 
-  // 5. 객체 수정 시 서버로 전송
   useEffect(() => {
     if (!canvas || !socket) return
 
@@ -155,23 +149,19 @@ const CanvasSection = () => {
     }
   }, [canvas, socket])
 
-  // 6. 서버로부터 받은 객체 추가
   useEffect(() => {
     if (!canvas || !socket) return
 
     const handleAdd = (data: any) => {
-      fabric.util.enlivenObjects(
-        [data],
-        (objects: fabric.Object[]) => {
-          objects.forEach((obj) => {
-            (obj as any)._synced = true
-            canvas.add(obj)
-          })
-          canvas.requestRenderAll()
-        },
-        
-        '',
-      )
+      fabric.util.enlivenObjects([
+        data
+      ], (objects: fabric.Object[]) => {
+        objects.forEach((obj) => {
+          (obj as any)._synced = true
+          canvas.add(obj)
+        })
+        canvas.requestRenderAll()
+      }, '', )
     }
 
     socket.on('object:add', handleAdd)
@@ -180,7 +170,6 @@ const CanvasSection = () => {
     }
   }, [canvas, socket])
 
-  // 7. 서버로부터 받은 객체 수정
   useEffect(() => {
     if (!canvas || !socket) return
 
@@ -199,7 +188,6 @@ const CanvasSection = () => {
     }
   }, [canvas, socket])
 
-  // 8. 서버로부터 받은 객체 삭제
   useEffect(() => {
     if (!canvas || !socket) return
 
@@ -214,6 +202,20 @@ const CanvasSection = () => {
     socket.on('object:removed', handleRemove)
     return () => {
       socket.off('object:removed', handleRemove)
+    }
+  }, [canvas, socket])
+
+  useEffect(() => {
+    if (!canvas || !socket) return
+
+    const handlePan = (transform: number[]) => {
+      canvas.setViewportTransform(transform)
+      canvas.requestRenderAll()
+    }
+
+    socket.on('canvas:pan', handlePan)
+    return () => {
+      socket.off('canvas:pan', handlePan)
     }
   }, [canvas, socket])
 
