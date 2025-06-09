@@ -19,6 +19,76 @@ const CanvasSection = () => {
   const [penWidth, setPenWidth] = useState(5)
   const [eraserWidth, setEraserWidth] = useState(20)
 
+  const [pdfDoc, setPdfDoc] = useState<any>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [numPages, setNumPages] = useState(0)
+
+  const renderPdfPage = async (pageNumber: number) => {
+    if (!canvas || !pdfDoc) return
+    const page = await pdfDoc.getPage(pageNumber)
+    const viewport = page.getViewport({ scale: 2 })
+
+    const tempCanvas = document.createElement('canvas')
+    const context = tempCanvas.getContext('2d')!
+    tempCanvas.width = viewport.width
+    tempCanvas.height = viewport.height
+
+    await page.render({ canvasContext: context, viewport }).promise
+
+    const img = new Image()
+    img.src = tempCanvas.toDataURL()
+
+    img.onload = () => {
+      canvas.getObjects().forEach(obj => {
+        if ((obj as any).isPdfPage) canvas.remove(obj)
+      })
+      const fabricImg = new fabric.Image(img, {
+        left: 0,
+        top: 0,
+        selectable: false,
+      })
+      ;(fabricImg as any).isPdfPage = true
+      canvas.add(fabricImg)
+      canvas.sendToBack(fabricImg)
+      canvas.requestRenderAll()
+    }
+  }
+
+  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canvas || !event.target.files || event.target.files.length === 0) return
+    const file = event.target.files[0]
+    const fileReader = new FileReader()
+    fileReader.onload = async () => {
+      try {
+        const typedarray = new Uint8Array(fileReader.result as ArrayBuffer)
+        const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
+        setPdfDoc(pdf)
+        setNumPages(pdf.numPages)
+        setCurrentPage(1)
+        await renderPdfPage(1)
+      } catch (err) {
+        console.error('PDF 불러오기 오류:', err)
+      }
+    }
+    fileReader.readAsArrayBuffer(file)
+  }
+
+  const goToPrevPage = async () => {
+    if (currentPage > 1) {
+      const newPage = currentPage - 1
+      setCurrentPage(newPage)
+      await renderPdfPage(newPage)
+    }
+  }
+
+  const goToNextPage = async () => {
+    if (pdfDoc && currentPage < numPages) {
+      const newPage = currentPage + 1
+      setCurrentPage(newPage)
+      await renderPdfPage(newPage)
+    }
+  }
+
   useEffect(() => {
     const newSocket = io('http://localhost:3001')
     setSocket(newSocket)
@@ -240,50 +310,8 @@ const CanvasSection = () => {
   link.download = 'whiteboard.png'
   link.click()
 }
-  const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  if (!canvas || !event.target.files || event.target.files.length === 0) return
-
-  const file = event.target.files[0]
-  const fileReader = new FileReader()
-
-  fileReader.onload = async () => {
-    try {
-      const typedarray = new Uint8Array(fileReader.result as ArrayBuffer)
-      const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
-      const page = await pdf.getPage(1)
-      const scale = 2
-      const viewport = page.getViewport({ scale })
-
-      const tempCanvas = document.createElement('canvas')
-      const context = tempCanvas.getContext('2d')
-      if (!context) return
-
-      tempCanvas.width = viewport.width
-      tempCanvas.height = viewport.height
-
-      await page.render({ canvasContext: context, viewport }).promise
-
-      const img = new Image()
-      img.src = tempCanvas.toDataURL()
-
-      img.onload = () => {
-        const fabricImg = new fabric.Image(img, {
-          left: 0,
-          top: 0,
-          selectable: false,
-        })
-        canvas.add(fabricImg)
-        canvas.sendToBack(fabricImg)
-        canvas.requestRenderAll()
-      }
-    } catch (err) {
-      console.error('PDF 불러오기 오류:', err)
-    }
-  }
-
-  fileReader.readAsArrayBuffer(file)
-}
-
+  
+  
 
   return (
     <div className="canvas-container" ref={containerRef}>
@@ -299,6 +327,13 @@ const CanvasSection = () => {
           📂 PDF 불러오기
           <input type="file" accept="application/pdf" onChange={handlePdfUpload} style={{ display: 'none' }} />
         </label>
+        {pdfDoc && (
+          <span style={{ marginLeft: 10 }}>
+            <button onClick={goToPrevPage} disabled={currentPage === 1}>⬅️</button>
+            <span style={{ margin: '0 6px' }}>{currentPage} / {numPages}</span>
+            <button onClick={goToNextPage} disabled={currentPage === numPages}>➡️</button>
+          </span>
+        )}
         {activeTool === 'pen' && (
           <>
             <label>색상: </label>
