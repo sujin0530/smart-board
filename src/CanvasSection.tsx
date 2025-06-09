@@ -3,6 +3,9 @@ import { fabric } from 'fabric'
 import { io, Socket } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
 import './CanvasSection.css'
+import jsPDF from 'jspdf'
+
+
 
 const CanvasSection = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -219,6 +222,14 @@ const CanvasSection = () => {
     }
   }, [canvas, socket])
 
+  const exportToPDF = () => {
+    if (!canvas) return
+    const dataURL = canvas.toDataURL({ format: 'png' })
+    const pdf = new jsPDF('landscape', 'pt', [canvas.getWidth(), canvas.getHeight()])
+    pdf.addImage(dataURL, 'PNG', 0, 0, canvas.getWidth(), canvas.getHeight())
+    pdf.save('whiteboard.pdf')
+  }
+
   return (
     <div className="canvas-container" ref={containerRef}>
       <canvas ref={canvasRef} />
@@ -227,6 +238,7 @@ const CanvasSection = () => {
         <button onClick={() => setActiveTool('pen')} disabled={activeTool === 'pen'}>펜</button>
         <button onClick={() => setActiveTool('eraser')} disabled={activeTool === 'eraser'}>지우개</button>
         <button onClick={() => setActiveTool('hand')} disabled={activeTool === 'hand'}>손</button>
+        <button onClick={exportToPDF}>📄 PDF로 저장</button>
         {activeTool === 'pen' && (
           <>
             <label>색상: </label>
