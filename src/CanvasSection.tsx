@@ -35,43 +35,53 @@ const CanvasSection = () => {
 
     await page.render({ canvasContext: context, viewport }).promise
 
-    const img = new Image()
-    img.src = tempCanvas.toDataURL()
+    const dataUrl = tempCanvas.toDataURL()
 
-    img.onload = () => {
-      canvas.getObjects().forEach(obj => {
-        if ((obj as any).isPdfPage) canvas.remove(obj)
-      })
-      const fabricImg = new fabric.Image(img, {
-        left: 0,
-        top: 0,
-        selectable: false,
-      })
-      ;(fabricImg as any).isPdfPage = true
-      canvas.add(fabricImg)
-      canvas.sendToBack(fabricImg)
-      canvas.requestRenderAll()
-    }
-  }
+  fabric.Image.fromURL(dataUrl, (fabricImg) => {
+    if (!fabricImg || !canvas) return
+
+    // 기존 PDF 배경 삭제
+    canvas.getObjects().forEach(obj => {
+      if ((obj as any).isPdfPage) canvas.remove(obj)
+    })
+
+    fabricImg.set({
+      left: 0,
+      top: 0,
+      selectable: false,
+    })
+    ;(fabricImg as any).isPdfPage = true
+
+    canvas.add(fabricImg)
+    canvas.sendToBack(fabricImg)
+    canvas.requestRenderAll()
+  }, { crossOrigin: 'anonymous' }) // CORS 오류 방지 (안전)
+}
 
   const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!canvas || !event.target.files || event.target.files.length === 0) return
+    if (!event.target.files || event.target.files.length === 0) return
     const file = event.target.files[0]
     const fileReader = new FileReader()
     fileReader.onload = async () => {
       try {
         const typedarray = new Uint8Array(fileReader.result as ArrayBuffer)
         const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise
+
         setPdfDoc(pdf)
         setNumPages(pdf.numPages)
         setCurrentPage(1)
-        await renderPdfPage(1)
       } catch (err) {
         console.error('PDF 불러오기 오류:', err)
       }
     }
     fileReader.readAsArrayBuffer(file)
   }
+
+  useEffect(() => {
+  if (canvas && pdfDoc && currentPage > 0) {
+    renderPdfPage(currentPage)
+  }
+}, [canvas, pdfDoc, currentPage])
 
   const goToPrevPage = async () => {
     if (currentPage > 1) {
