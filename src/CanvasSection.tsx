@@ -48,8 +48,12 @@ const CanvasSection = () => {
     a.download = 'canvas-recording.webm'
     a.click()
     URL.revokeObjectURL(url)
+    setRecordedChunks([])
   }
 
+  setRecordedChunks([])
+  setMediaRecorder(mediaRecorder)
+  setIsRecording(true)
   mediaRecorder.start()
 
   // 렌더링 트리거 (캔버스가 멈춰 있으면 스트림이 생성되지 않음)
@@ -59,15 +63,12 @@ const CanvasSection = () => {
     requestAnimationFrame(animate)
   }
   animate()
-
-  // 5초 후 자동 종료
-  setTimeout(() => {
-    mediaRecorder.stop()
-  }, 5000)
+  
 }
 
 const stopRecording = () => {
   mediaRecorder?.stop()
+  setIsRecording(false)
 }
 
   const [pdfDoc, setPdfDoc] = useState<any>(null)
