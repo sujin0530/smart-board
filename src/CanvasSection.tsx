@@ -19,6 +19,57 @@ const CanvasSection = () => {
   const [penWidth, setPenWidth] = useState(5)
   const [eraserWidth, setEraserWidth] = useState(20)
 
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
+  const [isRecording, setIsRecording] = useState(false)
+
+  const startRecording = () => {
+  const canvasEl = canvasRef.current
+  if (!canvasEl) return
+
+  const stream = canvasEl.captureStream(30) // FPS 설정
+  const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' })
+
+  const chunks: Blob[] = []
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunks.push(e.data)
+  }
+
+  mediaRecorder.onstop = () => {
+    if (chunks.length === 0) {
+      console.error('❌ 녹화된 데이터가 없습니다.')
+      return
+    }
+    const blob = new Blob(chunks, { type: 'video/webm' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'canvas-recording.webm'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  mediaRecorder.start()
+
+  // 렌더링 트리거 (캔버스가 멈춰 있으면 스트림이 생성되지 않음)
+  const animate = () => {
+    if (!canvas) return
+    canvas.renderAll()
+    requestAnimationFrame(animate)
+  }
+  animate()
+
+  // 5초 후 자동 종료
+  setTimeout(() => {
+    mediaRecorder.stop()
+  }, 5000)
+}
+
+const stopRecording = () => {
+  mediaRecorder?.stop()
+}
+
   const [pdfDoc, setPdfDoc] = useState<any>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [numPages, setNumPages] = useState(0)
@@ -333,6 +384,9 @@ const CanvasSection = () => {
         <button onClick={() => setActiveTool('hand')} disabled={activeTool === 'hand'}>손</button>
         <button onClick={exportToPDF}>📄 PDF로 저장</button>
         <button onClick={exportToPNG}>🖼 PNG로 저장</button>
+        <button onClick={isRecording ? stopRecording : startRecording}>
+  {isRecording ? '⏹ 녹화 중지' : '🎥 녹화 시작'}
+</button>
         <label style={{ display: 'inline-block' }}>
           📂 PDF 불러오기
           <input type="file" accept="application/pdf" onChange={handlePdfUpload} style={{ display: 'none' }} />
