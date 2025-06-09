@@ -10,6 +10,10 @@ const io = new Server(3001, {
 io.on('connection', (socket) => {
   console.log('✅ Client connected:', socket.id)
 
+  socket.on('chat:message', (data) => {
+    socket.broadcast.emit('chat:message', data)
+  })
+
   // 객체 추가
   socket.on('object:add', (data) => {
     socket.broadcast.emit('object:add', data)

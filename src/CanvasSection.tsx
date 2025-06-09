@@ -19,6 +19,30 @@ const CanvasSection = () => {
   const [penWidth, setPenWidth] = useState(5)
   const [eraserWidth, setEraserWidth] = useState(20)
 
+  const [chatMessages, setChatMessages] = useState<{ sender: string; message: string }[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const username = useRef(`User_${Math.floor(Math.random() * 1000)}`)
+
+  const sendMessage = () => {
+  if (chatInput.trim() === '' || !socket) return
+  const newMessage = { sender: username.current, message: chatInput }
+  socket.emit('chat:message', newMessage)
+  setChatMessages((prev) => [...prev, newMessage])
+  setChatInput('')
+}
+  useEffect(() => {
+  if (!socket) return
+  const receiveMessage = (data: { sender: string; message: string }) => {
+    setChatMessages((prev) => [...prev, data])
+  }
+  socket.on('chat:message', receiveMessage)
+  return () => {
+    socket.off('chat:message', receiveMessage)
+  }
+}, [socket])
+
+
+
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([])
   const [isRecording, setIsRecording] = useState(false)
@@ -376,6 +400,7 @@ const stopRecording = () => {
   
 
   return (
+    
     <div className="canvas-container" ref={containerRef}>
       <canvas ref={canvasRef} />
       <div className="tool-bar">
@@ -414,7 +439,29 @@ const stopRecording = () => {
           </>
         )}
       </div>
+      <div className="chat-container">
+  <div className="chat-messages">
+    {chatMessages.map((msg, idx) => (
+      <div key={idx}>
+        <strong>{msg.sender}:</strong> {msg.message}
+      </div>
+    ))}
+  </div>
+  <div className="chat-input">
+    <input
+      type="text"
+      value={chatInput}
+      onChange={(e) => setChatInput(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+      placeholder="메시지 입력..."
+    />
+    <button onClick={sendMessage}>전송</button>
+  </div>
+</div>
+
     </div>
+
+    
   )
 }
 
