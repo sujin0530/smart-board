@@ -23,6 +23,11 @@ const CanvasSection = () => {
   const [chatInput, setChatInput] = useState('')
   const username = useRef(`User_${Math.floor(Math.random() * 1000)}`)
 
+  const [isChatVisible, setIsChatVisible] = useState(true)
+  const chatContainerRef = useRef<HTMLDivElement | null>(null)
+
+
+
   const sendMessage = () => {
   if (chatInput.trim() === '' || !socket) return
   const newMessage = { sender: username.current, message: chatInput }
@@ -41,6 +46,39 @@ const CanvasSection = () => {
   }
 }, [socket])
 
+  useEffect(() => {
+  const el = chatContainerRef.current
+  if (!el) return
+
+  let offsetX = 0
+  let offsetY = 0
+  let isDragging = false
+
+  const handleMouseDown = (e: MouseEvent) => {
+    isDragging = true
+    offsetX = e.clientX - el.getBoundingClientRect().left
+    offsetY = e.clientY - el.getBoundingClientRect().top
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return
+    el.style.left = `${e.clientX - offsetX}px`
+    el.style.top = `${e.clientY - offsetY}px`
+  }
+
+  const handleMouseUp = () => {
+    isDragging = false
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseup', handleMouseUp)
+  }
+
+  el.addEventListener('mousedown', handleMouseDown)
+  return () => {
+    el.removeEventListener('mousedown', handleMouseDown)
+  }
+}, [chatContainerRef])
 
 
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
@@ -439,25 +477,31 @@ const stopRecording = () => {
           </>
         )}
       </div>
-      <div className="chat-container">
-  <div className="chat-messages">
-    {chatMessages.map((msg, idx) => (
-      <div key={idx}>
-        <strong>{msg.sender}:</strong> {msg.message}
-      </div>
-    ))}
+      {isChatVisible ? (
+  <div className="chat-container" ref={chatContainerRef} style={{ position: 'absolute', bottom: '10px', right: '10px' }}>
+    <div className="chat-header">
+      <span>💬 채팅</span>
+      <button onClick={() => setIsChatVisible(false)}>✖</button>
+    </div>
+    <div className="chat-messages">
+      {chatMessages.map((msg, idx) => (
+        <div key={idx}><strong>{msg.sender}:</strong> {msg.message}</div>
+      ))}
+    </div>
+    <div className="chat-input">
+      <input
+        type="text"
+        value={chatInput}
+        onChange={(e) => setChatInput(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+        placeholder="메시지 입력..."
+      />
+      <button onClick={sendMessage}>전송</button>
+    </div>
   </div>
-  <div className="chat-input">
-    <input
-      type="text"
-      value={chatInput}
-      onChange={(e) => setChatInput(e.target.value)}
-      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-      placeholder="메시지 입력..."
-    />
-    <button onClick={sendMessage}>전송</button>
-  </div>
-</div>
+) : (
+  <button className="chat-toggle-button" onClick={() => setIsChatVisible(true)}>💬 채팅 열기</button>
+)}
 
     </div>
 
