@@ -40,6 +40,8 @@ cd smart-board
 ### 2. 패키지 설치
 ```bash
 npm install
+npm install fabric@5.3.0
+npm install --save-dev @types/fabric
 ```
 
 ### 3. 클라이언트 실행
